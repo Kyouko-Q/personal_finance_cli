@@ -1,6 +1,3 @@
-import sqlite3
-import pytest
-
 from src.transactions import (
     add_transaction,
     delete_transaction,
