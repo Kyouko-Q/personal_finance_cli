@@ -8,24 +8,6 @@ from src.transactions import (
 )
 
 
-@pytest.fixture
-def conn():
-    conn = sqlite3.connect(":memory:")
-
-    conn.execute("""
-        CREATE TABLE transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            amount REAL NOT NULL,
-            category TEXT NOT NULL,
-            description TEXT
-        )
-    """)
-
-    yield conn
-    conn.close()
-
-
 def test_add_transaction(conn):
     txn_id = add_transaction(
         conn,
@@ -40,13 +22,11 @@ def test_add_transaction(conn):
         (txn_id,)
     ).fetchone()
 
-    assert row == (
-        txn_id,
-        "2026-09-03",
-        50.0,
-        "groceries",
-        "milk"
-    )
+    assert row["id"] == txn_id
+    assert row["date"] == "2026-09-03"
+    assert row["amount"] == 50.0
+    assert row["category"] == "groceries"
+    assert row["description"] == "milk"
 
 
 def test_add_transaction_default_description(conn):
@@ -114,7 +94,9 @@ def test_edit_transaction(conn):
         (txn_id,)
     ).fetchone()
 
-    assert row == (75.0, "food", "milk")
+    assert row["amount"] == 75.0
+    assert row["category"] == "food"
+    assert row["description"] == "milk"
 
 
 def test_edit_nonexistent_transaction(conn):
