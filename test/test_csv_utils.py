@@ -113,23 +113,6 @@ def test_import_empty_csv(conn, tmp_path):
 
     assert count == 0
 
-def test_import_empty_csv(conn, tmp_path):
-    filepath = tmp_path / "empty.csv"
-
-    with open(filepath, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["date", "amount", "category", "description"])
-
-    result = import_csv(conn, filepath)
-
-    assert result == 0
-
-    count = conn.execute(
-        "SELECT COUNT(*) FROM transactions"
-    ).fetchone()[0]
-
-    assert count == 0
-
 def test_import_invalid_amount(conn, tmp_path):
     filepath = tmp_path / "bad.csv"
 

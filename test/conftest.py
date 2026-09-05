@@ -8,14 +8,15 @@ def conn():
     conn.row_factory = sqlite3.Row
 
     conn.execute("""
-        CREATE TABLE transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            amount REAL NOT NULL,
-            category TEXT NOT NULL,
-            description TEXT
-        )
-    """)
+    CREATE TABLE transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        amount REAL NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT,
+        import_hash TEXT UNIQUE
+    )
+""")
 
     yield conn
     conn.close()
