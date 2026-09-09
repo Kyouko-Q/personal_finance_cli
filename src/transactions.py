@@ -1,4 +1,11 @@
 # transactions.py
+ALLOWED_FIELDS = {
+    "date",
+    "amount",
+    "category",
+    "description",
+}
+
 def add_transaction(conn, date, amount, category, description=""):
     cur = conn.execute(
         "INSERT INTO transactions (date, amount, category, description) VALUES (?, ?, ?, ?)",
@@ -16,6 +23,15 @@ def edit_transaction(conn, txn_id, **fields):
     # fields might be {"amount": 42.50, "category": "groceries"}
     if not fields:
         return 0
+
+    # Check that every requested field is allowed
+    invalid_fields = set(fields) - ALLOWED_FIELDS
+
+    if invalid_fields:
+        raise ValueError(
+            f"invalid fields: {sorted(invalid_fields)}"
+        )
+    
     set_clause = ", ".join(f"{k} = ?" for k in fields)
     values = list(fields.values()) + [txn_id]
     cur = conn.execute(f"UPDATE transactions SET {set_clause} WHERE id = ?", values)
