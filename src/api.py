@@ -12,7 +12,10 @@ DB_PATH = "finance.db"
 
 def get_db():
     if "db" not in g:
-        g.db = get_connection(DB_PATH)
+        if "TEST_DB" in app.config:
+            g.db = app.config["TEST_DB"]
+        else:
+            g.db = get_connection(DB_PATH)
 
     return g.db
 
@@ -21,7 +24,7 @@ def get_db():
 def close_db(exception):
     db = g.pop("db", None)
 
-    if db is not None:
+    if db is not None and "TEST_DB" not in app.config:
         db.close()
 
 

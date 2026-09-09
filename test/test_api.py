@@ -298,17 +298,17 @@ def test_get_transaction_different_ids(conn):
     assert data["category"] == "transport"
 
 def test_create_transaction(conn):
-    with app.test_client() as client:
-        with app.app_context():
-            g.db = conn
+    app.config["TESTING"] = True
+    app.config["TEST_DB"] = conn
 
-            response = client.post(
-                "/transactions",
-                json={
-                    "date": "2026-09-09",
-                    "amount": 25.5,
-                    "category": "food",
-                    "description": "lunch"
+    with app.test_client() as client:
+        response = client.post(
+            "/transactions",
+            json={
+                "date": "2026-09-09",
+                "amount": 25.5,
+                "category": "food",
+                "description": "lunch"
                 }
             )
 
@@ -407,14 +407,14 @@ def test_update_transaction(conn):
     assert row["description"] == "dinner"
 
 def test_update_transaction_not_found(conn):
+    app.config["TESTING"] = True
+    app.config["TEST_DB"] = conn
+    
     with app.test_client() as client:
-        with app.app_context():
-            g.db = conn
-
-            response = client.put(
-                "/transactions/9999",
-                json={"amount": 30}
-            )
+        response = client.put(
+            "/transactions/9999",
+            json={"amount": 30}
+        )
 
     assert response.status_code == 404
 
@@ -430,6 +430,8 @@ def test_remove_transaction(conn):
         "food",
         "lunch"
     )
+    app.config["TESTING"] = True
+    app.config["TEST_DB"] = conn
 
     with app.test_client() as client:
         with app.app_context():
