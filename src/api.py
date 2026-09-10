@@ -1,13 +1,15 @@
 from flask import Flask, jsonify, request, g
+import re
 
 from .db import get_connection
-from .reports import filter_transactions
+from .reports import filter_transactions, monthly_summary
 from .transactions import add_transaction, edit_transaction, delete_transaction
 
 
 app = Flask(__name__)
 
 DB_PATH = "finance.db"
+MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
 
 def get_db():
@@ -106,6 +108,24 @@ def remove_transaction(txn_id):
     if deleted == 0:
         return jsonify({"error": "not found"}), 404
     return "", 204
+
+
+@app.route("/summary", methods=["GET"])
+def summary():
+    month = request.args.get("month")
+    if not month or not MONTH_RE.match(month):
+        return jsonify({"error": "month must be in YYYY-MM format"}), 400
+
+    conn = get_db()
+    rows, grand_total = monthly_summary(conn, month)
+    return jsonify({
+        "month": month,
+        "by_category": [
+            {"category": r["category"], "total": r["total"], "count": r["count"]}
+            for r in rows
+        ],
+        "grand_total": grand_total
+    })
 
 
 if __name__ == "__main__":

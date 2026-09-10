@@ -19,7 +19,8 @@ def monthly_summary(conn, year_month):  # "2026-08"
            FROM transactions
            WHERE strftime('%Y-%m', date) = ?
            GROUP BY category
-           ORDER BY total DESC""",
+           ORDER BY total DESC, category ASC
+           """,
         (year_month,)
     ).fetchall()
     grand_total = sum(r["total"] for r in rows)

@@ -465,3 +465,93 @@ def test_remove_transaction_not_found(conn):
     assert response.get_json() == {
         "error": "not found"
     }
+
+def test_summary(client, conn):
+    add_transaction(conn, "2026-09-01", 20, "food", "lunch")
+    add_transaction(conn, "2026-09-05", 30, "food", "dinner")
+    add_transaction(conn, "2026-09-10", 50, "transport", "bus")
+
+    response = client.get("/summary?month=2026-09")
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["month"] == "2026-09"
+    assert data["grand_total"] == 100
+
+    assert data["by_category"] == [
+        {"category": "food", "total": 50, "count": 2},
+        {"category": "transport", "total": 50, "count": 1},
+    ]
+
+def test_summary_missing_month(client):
+    response = client.get("/summary")
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "month must be in YYYY-MM format"
+    }
+
+def test_summary_empty_month(client):
+    response = client.get("/summary?month=2026-09")
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["month"] == "2026-09"
+    assert data["by_category"] == []
+    assert data["grand_total"] == 0
+
+def test_summary_only_selected_month(client, conn):
+    add_transaction(conn, "2026-08-31", 100, "food", "August")
+    add_transaction(conn, "2026-09-01", 20, "food", "September")
+
+    response = client.get("/summary?month=2026-09")
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["grand_total"] == 20
+    assert data["by_category"] == [
+        {"category": "food", "total": 20, "count": 1}
+    ]
+
+def test_summary_multiple_categories(client, conn):
+    add_transaction(conn, "2026-09-01", 10, "food")
+    add_transaction(conn, "2026-09-02", 20, "transport")
+    add_transaction(conn, "2026-09-03", 30, "food")
+
+    response = client.get("/summary?month=2026-09")
+
+    data = response.get_json()
+
+    assert data["grand_total"] == 60
+    assert data["by_category"] == [
+        {"category": "food", "total": 40, "count": 2},
+        {"category": "transport", "total": 20, "count": 1},
+    ]
+
+def test_summary_single_transaction(client, conn):
+    add_transaction(conn, "2026-09-10", 25, "food")
+
+    response = client.get("/summary?month=2026-09")
+
+    data = response.get_json()
+
+    assert data["grand_total"] == 25
+    assert data["by_category"] == [
+        {"category": "food", "total": 25, "count": 1}
+    ]
+
+def test_summary_negative_amount(client, conn):
+    add_transaction(conn, "2026-09-01", 50, "food")
+    add_transaction(conn, "2026-09-02", -10, "food")
+
+    response = client.get("/summary?month=2026-09")
+
+    data = response.get_json()
+
+    assert data["grand_total"] == 40
+    assert data["by_category"][0]["total"] == 40

@@ -34,15 +34,14 @@ def test_filter_by_date_range(conn):
 def test_monthly_summary(conn):
     add_transaction(conn, "2026-08-01", 20, "food")
     add_transaction(conn, "2026-08-02", 30, "food")
-    add_transaction(conn, "2026-08-03", 50, "transport")
+    add_transaction(conn, "2026-08-03", 60, "transport")
 
     rows, grand_total = monthly_summary(conn, "2026-08")
 
-    assert grand_total == 100
+    assert grand_total == 110
 
-    # First category should be transport because 50 > 20 + 30
     assert rows[0]["category"] == "transport"
-    assert rows[0]["total"] == 50
+    assert rows[0]["total"] == 60
     assert rows[0]["count"] == 1
 
     assert rows[1]["category"] == "food"

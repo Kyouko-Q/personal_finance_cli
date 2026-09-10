@@ -1,6 +1,8 @@
 import sqlite3
 import pytest
 
+from src.api import app
+
 
 @pytest.fixture
 def conn():
@@ -24,3 +26,13 @@ def conn():
     yield conn
 
     conn.close()
+
+@pytest.fixture
+def client(conn):
+    app.config["TESTING"] = True
+    app.config["TEST_DB"] = conn
+
+    with app.test_client() as client:
+        yield client
+
+    app.config.pop("TEST_DB", None)
