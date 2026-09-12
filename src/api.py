@@ -1,9 +1,13 @@
 from flask import Flask, jsonify, request, g
 import re
+import tempfile, os
+from flask import send_file
+
 
 from .db import get_connection
 from .reports import filter_transactions, monthly_summary
 from .transactions import add_transaction, edit_transaction, delete_transaction
+from .csv_utils import import_csv, export_csv
 
 
 app = Flask(__name__)
@@ -126,6 +130,45 @@ def summary():
         ],
         "grand_total": grand_total
     })
+
+@app.route("/import", methods=["POST"])
+def api_import_csv():
+    if "file" not in request.files:
+        return jsonify({"error": "no file field named 'file'"}), 400
+
+    upload = request.files["file"]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+        upload.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        conn = get_db()
+        result = import_csv(conn, tmp_path)  # same function from the CLI's Day 6
+    finally:
+        os.unlink(tmp_path)
+
+    return jsonify(result)
+
+@app.route("/export", methods=["GET"])
+def api_export_csv():
+    conn = get_db()
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+        export_csv(conn, tmp.name)
+        tmp_path = tmp.name
+
+    response = send_file(
+        tmp_path,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="transactions_export.csv"
+    )
+
+    @response.call_on_close
+    def cleanup():
+        os.unlink(tmp_path)
+
+    return response
 
 
 if __name__ == "__main__":

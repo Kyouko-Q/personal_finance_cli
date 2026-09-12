@@ -1,4 +1,5 @@
 from flask import g
+import io
 
 from src.api import app
 from src.transactions import add_transaction
@@ -555,3 +556,129 @@ def test_summary_negative_amount(client, conn):
 
     assert data["grand_total"] == 40
     assert data["by_category"][0]["total"] == 40
+
+
+def test_api_import_csv(client, conn):
+    csv_data = (
+        "date,amount,category,description\n"
+        "2026-09-01,20,food,lunch\n"
+        "2026-09-02,30,transport,bus\n"
+    )
+
+    response = client.post(
+        "/import",
+        data={
+            "file": (io.BytesIO(csv_data.encode()), "transactions.csv")
+        },
+        content_type="multipart/form-data"
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["imported"] == 2
+    assert data["duplicates"] == 0
+    assert data["malformed"] == []
+
+    rows = conn.execute(
+        "SELECT * FROM transactions ORDER BY date"
+    ).fetchall()
+
+    assert len(rows) == 2
+    assert rows[0]["category"] == "food"
+    assert rows[1]["category"] == "transport"
+
+def test_api_import_no_file(client):
+    response = client.post("/import")
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "no file field named 'file'"
+    }
+
+def test_api_import_malformed_csv(client, conn):
+    csv_data = (
+        "date,amount,category,description\n"
+        "2026-09-01,not-a-number,food,lunch\n"
+        "2026-09-02,30,transport,bus\n"
+    )
+
+    response = client.post(
+        "/import",
+        data={
+            "file": (io.BytesIO(csv_data.encode()), "transactions.csv")
+        },
+        content_type="multipart/form-data"
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["imported"] == 1
+    assert len(data["malformed"]) == 1
+    assert data["duplicates"] == 0
+
+def test_api_import_duplicate(client, conn):
+    csv_data = (
+        "date,amount,category,description\n"
+        "2026-09-01,20,food,lunch\n"
+    )
+
+    file_data = {
+        "file": (io.BytesIO(csv_data.encode()), "transactions.csv")
+    }
+
+    response = client.post(
+        "/import",
+        data=file_data,
+        content_type="multipart/form-data"
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["imported"] == 1
+
+    # Import exactly the same data again
+    file_data = {
+        "file": (io.BytesIO(csv_data.encode()), "transactions.csv")
+    }
+
+    response = client.post(
+        "/import",
+        data=file_data,
+        content_type="multipart/form-data"
+    )
+
+    data = response.get_json()
+
+    assert data["imported"] == 0
+    assert data["duplicates"] == 1
+
+def test_api_export_csv(client, conn):
+    add_transaction(conn, "2026-09-01", 20, "food", "lunch")
+    add_transaction(conn, "2026-09-02", 30, "transport", "bus")
+
+    response = client.get("/export")
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+
+    csv_text = response.data.decode("utf-8")
+
+    assert "date,amount,category,description" in csv_text
+    assert "2026-09-01" in csv_text
+    assert "20.0" in csv_text
+    assert "food" in csv_text
+    assert "lunch" in csv_text
+    assert "transactions_export.csv" in response.headers["Content-Disposition"]
+
+def test_api_export_empty(client):
+    response = client.get("/export")
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+
+    csv_text = response.data.decode("utf-8")
+
+    assert csv_text == "date,amount,category,description\r\n"
