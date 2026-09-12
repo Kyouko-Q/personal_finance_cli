@@ -12,6 +12,30 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_import_hash ON transactions(import_hash)
     WHERE import_hash IS NOT NULL;
+CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    amount REAL NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT,
+    import_hash TEXT UNIQUE,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS recurring_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    amount REAL NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT,
+    frequency TEXT NOT NULL
+        CHECK (frequency IN ('daily', 'weekly', 'monthly', 'yearly')),
+    interval_count INTEGER NOT NULL DEFAULT 1
+        CHECK (interval_count > 0),
+    next_due_date TEXT NOT NULL,
+    end_date TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 def get_connection(db_path="finance.db"):
