@@ -22,6 +22,21 @@ def conn():
         )
         """
     )
+    conn.execute("""
+    CREATE TABLE recurring_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        amount REAL NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT,
+        frequency TEXT NOT NULL,
+        interval_count INTEGER NOT NULL DEFAULT 1,
+        next_due_date TEXT NOT NULL,
+        end_date TEXT,
+        active INTEGER NOT NULL DEFAULT 1
+    )
+    """
+    )
 
     yield conn
 
