@@ -1,6 +1,7 @@
 import sys
 
 from .transactions import delete_transaction
+from .recurring import generate_due_transactions
 
 
 def cli_guard(fn):
@@ -35,3 +36,8 @@ def cmd_delete(conn, txn_id):
         )
 
     print(f"Deleted transaction {txn_id}")
+
+# CLI wiring — a manual-trigger command
+def cmd_run_recurring(conn):
+    created = generate_due_transactions(conn)
+    print(f"Generated {len(created)} transaction(s) from recurring rules.")

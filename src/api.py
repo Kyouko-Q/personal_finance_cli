@@ -8,7 +8,8 @@ from .db import get_connection
 from .reports import filter_transactions, monthly_summary
 from .transactions import add_transaction, edit_transaction, delete_transaction
 from .csv_utils import import_csv, export_csv
-
+from .recurring import generate_due_transactions
+from .auth import require_auth
 
 app = Flask(__name__)
 
@@ -170,6 +171,13 @@ def api_export_csv():
 
     return response
 
+# API wiring
+@app.route("/recurring/run", methods=["POST"])
+@require_auth   # omit if no auth sprint
+def run_recurring():
+    conn = get_db()
+    created = generate_due_transactions(conn)
+    return jsonify({"created_count": len(created), "transaction_ids": created})
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
