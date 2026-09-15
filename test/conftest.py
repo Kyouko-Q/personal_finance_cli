@@ -2,7 +2,7 @@ import sqlite3
 import pytest
 
 from src.api import app
-
+import src.auth
 
 @pytest.fixture
 def conn():
@@ -51,3 +51,11 @@ def client(conn):
         yield client
 
     app.config.pop("TEST_DB", None)
+
+@pytest.fixture
+def auth_token(monkeypatch):
+    token = "test-token-123"
+
+    monkeypatch.setattr(src.auth, "API_TOKEN", token)
+
+    return token

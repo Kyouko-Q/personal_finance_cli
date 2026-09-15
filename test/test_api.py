@@ -3,6 +3,7 @@ import io
 
 from src.api import app
 from src.transactions import add_transaction
+from src.auth import API_TOKEN
 
 
 def create_test_client(conn):
@@ -682,3 +683,47 @@ def test_api_export_empty(client):
     csv_text = response.data.decode("utf-8")
 
     assert csv_text == "date,amount,category,description\r\n"
+
+def test_run_recurring(client, conn, auth_token):
+    conn.execute("""
+        INSERT INTO recurring_rules
+        (amount, category, description, frequency, interval_count, next_due_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (50, "rent", "Apartment", "monthly", 1, "2026-09-01"))
+    conn.commit()
+
+    response = client.post(
+        "/recurring/run",
+        headers={
+            "Authorization": f"Bearer {auth_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["created_count"] == 1
+    assert len(data["transaction_ids"]) == 1
+
+    row = conn.execute(
+        "SELECT * FROM transactions"
+    ).fetchone()
+
+    assert row["amount"] == 50
+    assert row["category"] == "rent"
+
+def test_run_recurring_requires_auth(client):
+    response = client.post("/recurring/run")
+
+    assert response.status_code == 401
+
+def test_run_recurring_valid_token(client, conn, auth_token):
+    response = client.post(
+        "/recurring/run",
+        headers={
+            "Authorization": f"Bearer {auth_token}"
+        }
+    )
+
+    assert response.status_code == 200

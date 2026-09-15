@@ -2,6 +2,8 @@ import pytest
 
 from src.cli import cmd_delete
 from src.transactions import add_transaction
+from src.cli import cmd_run_recurring
+
 
 
 def test_cmd_delete(conn, capsys):
@@ -55,3 +57,28 @@ def test_cli_guard_file_not_found(capsys):
     assert captured.err == (
         "Error: file not found — missing.csv\n"
     )
+
+
+def test_cmd_run_recurring(conn, capsys):
+    # Arrange
+    conn.execute("""
+        INSERT INTO recurring_rules
+        (amount, category, description, frequency, interval_count, next_due_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (50, "rent", "Apartment", "monthly", 1, "2026-09-01"))
+    conn.commit()
+
+    # Act
+    cmd_run_recurring(conn)
+
+    # Assert
+    captured = capsys.readouterr()
+
+    assert "Generated 1 transaction(s)" in captured.out
+
+    row = conn.execute(
+        "SELECT * FROM transactions"
+    ).fetchone()
+
+    assert row["amount"] == 50
+    assert row["category"] == "rent"
